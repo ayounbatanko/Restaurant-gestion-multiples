@@ -1,5 +1,5 @@
 {
-  "name": "RestoGest",
+  "name": "Gestion Multiples de Restaurant",
   "short_name": "RestoGest",
   "description": "Gestion de restaurant, commandes et livraisons",
   "start_url": "./index.html",
