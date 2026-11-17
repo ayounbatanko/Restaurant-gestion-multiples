@@ -1,6 +1,6 @@
 {
-  "version": "1.9.4",
-  "message": "Confirmation des opérations de paramètres avec bouton retour ; annulation client bloquée dès que la commande est en route.",
+  "version": "2.1.0",
+  "message": "Portail Sahel Connect (sous-dossier /sahel/), extensions RestoGest v2 (avis, promos, attribution livreur, suivi GPS, cuisine, stock, notes de chambre, statistiques, mode sombre).",
   "notify": true,
-  "updatedAt": "2026-11-17T18:00:00Z"
+  "updatedAt": "2026-11-17T20:21:42Z"
 }

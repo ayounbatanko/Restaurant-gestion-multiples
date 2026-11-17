@@ -114,6 +114,7 @@ function poll(){
   }).catch(function(){online=false});
 }
 
+D.refresh=function(){poll.t=0;poll()};
 loadSync();
 window.RGDB=D;
 setInterval(poll,2500);
