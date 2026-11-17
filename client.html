@@ -255,7 +255,7 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
  <div class="card col">
   <b>Votre panier ${nItems?`(${nItems} article${nItems>1?'s':''})`:''}</b>
   ${items.length?`<div>${items.map(i=>`${esc(i.n)} ×${i.q} — ${money(i.p*i.q,r.currency)}`).join('<br>')}</div>${delivHtml(r,tot)}<div class="kpi" style="font-size:22px">Total : ${money(delivInfo(r,tot).total,r.currency)}</div>`:'<p class="mut">Ajoutez plusieurs plats avec les boutons + / −.</p>'}
-  ${r.hotel&&r.hotel.enabled?`<label>🏨 Type de service<select id="serviceType"><option value="Service en chambre">Service en chambre</option>${(r.hotel.services||['Restaurant','Service en chambre']).filter(x=>x!=='Service en chambre').map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></label><label>Numéro de chambre <span style="color:#d33">*</span><input id="roomNumber" required inputmode="text" autocomplete="off" placeholder="Ex. 204" oninput="if(this.value.trim()){const s=document.getElementById('serviceType');if(s)s.value='Service en chambre'}"><p class="mut">Obligatoire pour identifier votre commande. En indiquant votre chambre, le service passe en « Service en chambre » et aucun frais de livraison n’est appliqué.</p></label><p class="mut">${esc(r.hotel.instructions||'Indiquez le numéro de votre chambre pour recevoir votre commande.')}</p>`:''}
+  ${r.hotel&&r.hotel.enabled?`<label>🏨 Type de service<select id="serviceType">${(r.hotel.services||['Restaurant','Service en chambre']).map(x=>`<option>${esc(x)}</option>`).join('')}</select></label><input id="roomNumber" placeholder="Numéro de chambre (si service en chambre)"><p class="mut">${esc(r.hotel.instructions||'Indiquez votre chambre si vous souhaitez être servi sur place.')}</p>`:''}
   <input id="ad" placeholder="${r.hotel&&r.hotel.enabled?'Bâtiment / étage / précision (facultatif)':'Adresse / complément (quartier, porte, repère)'}">
   <div class="gps-box ${gpsClass}" id="gpsbox">
    <div id="gpsmsg" class="mut">${gpsText}</div>
@@ -316,10 +316,7 @@ function order(){
  const pyEl=document.getElementById('py');
  const serviceEl=document.getElementById('serviceType');
  const roomEl=document.getElementById('roomNumber');
- const roomNumber=roomEl?roomEl.value.trim():'';
- if(hotelOrder&&!roomNumber)return alert('Le numéro de chambre est obligatoire pour toute commande passée auprès de cet hôtel.');
- if(roomNumber&&serviceEl)serviceEl.value='Service en chambre';
- const finalServiceType=hotelOrder?(roomNumber?'Service en chambre':(serviceEl?.value||'Service en chambre')):(serviceEl?.value||null);
+ if(serviceEl&&serviceEl.value.toLowerCase().includes('chambre')&&!(roomEl&&roomEl.value.trim()))return alert('Veuillez indiquer votre numéro de chambre pour le service en chambre.');
  const d=D.get();
  d.orders.push({
   id:uid(),
@@ -335,9 +332,9 @@ function order(){
   total:sub0+dv.fee,
   status:'en attente',
   pay:pyEl?pyEl.value:'Paiement à la livraison',
-  addr:(addrEl&&addrEl.value.trim())||(hotelOrder?'Chambre '+roomNumber:'Position GPS du client'),
-  serviceType:finalServiceType,
-  roomNumber:roomNumber||null,
+  addr:(addrEl&&addrEl.value.trim())||'Position GPS du client',
+  serviceType:document.getElementById('serviceType')?.value||null,
+  roomNumber:document.getElementById('roomNumber')?.value.trim()||null,
   cLat:pos?pos[0]:null,
   cLng:pos?pos[1]:null,
   locationAccuracy:pos?(window._clientGpsAccuracy||null):null,
