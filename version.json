@@ -1,6 +1,6 @@
 {
-  "version": "1.9.1",
-  "message": "Commandes des hôtels partenaires sans frais de livraison ; GPS facultatif pour le service hôtelier.",
+  "version": "1.9.2",
+  "message": "Commandes hôtel : numéro de chambre obligatoire, service en chambre sélectionné automatiquement et livraison gratuite.",
   "notify": true,
-  "updatedAt": "2026-11-17T16:00:00Z"
+  "updatedAt": "2026-11-17T16:20:00Z"
 }
