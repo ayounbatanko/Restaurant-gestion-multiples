@@ -205,10 +205,11 @@ const U=guard('restaurant');U&&RGChat.watch(U.id);var setSub='rest';let tab=null
 const R=()=>D.get().rests.find(r=>r.id==U.restId);
 const upd=f=>{const d=D.get();f(d.rests.find(r=>r.id==U.restId),d);D.save(d)};
 const day=ts=>new Date(ts).toISOString().slice(0,10);
-const tabs=['sub','dash','pos','orders','menu','hist','report','drivers','support','settings'];
+const tabs=['sub','dash','hotel','pos','orders','menu','hist','report','drivers','support','settings'];
 const tabMeta={
  sub:{label:'Abonnement Pro',ico:'⭐'},
  dash:{label:'Tableau de bord',ico:'⊞'},
+ hotel:{label:'Gestion hôtelière',ico:'🏨'},
  pos:{label:'Caisse',ico:'🧮'},
  orders:{label:'Commandes en ligne',ico:'🛒'},
  menu:{label:'Menu',ico:'🍴'},
@@ -216,10 +217,11 @@ const tabMeta={
  drivers:{label:'Gestion des livreurs',ico:'🚚'},
  report:{label:'Rapport du chiffre d\'affaires',ico:'📈'},
  support:{label:'Support (écrire à l\'administrateur)',ico:'💬'},
+ hotel:{label:'Module hôtel',ico:'🏨'},
  settings:{label:'Paramètres et réglages',ico:'⚙️'}
 };
 function homeGrid(){const pend=D.get().orders.filter(o=>o.restId==U.restId&&o.status=='en attente').length;
- const order=[ 'sub','dash','pos','orders','menu','hist','report','drivers','support','settings'];
+ const order=[ 'sub','dash','hotel','pos','orders','menu','hist','report','drivers','support','settings'];
  const btns=order.map(k=>{const m=tabMeta[k];const badge=(k=='orders'&&pend)?` <span class="badge">${pend}</span>`:'';
   const cls=(k==='settings'||k==='sub')?'hg-btn full':'hg-btn';
   return `<button class="${cls}" onclick="tab='${k}';render()"><span class="ico">${m.ico}</span><span>${m.label}${badge}</span></button>`}).join('');
@@ -336,7 +338,12 @@ function submitProPay(){
  toast('Paiement transmis au propriétaire');render();
 }
 const V={
-dash(r){const S=r.sales,c=r.currency,td=day(Date.now()),sum=a=>a.reduce((x,s)=>x+s.total,0);
+hotel(r){const h=r.hotel||{};const os=D.get().orders.filter(o=>o.restId===r.id);const active=os.filter(o=>!['terminée','refusée','annulée'].includes(o.status));const today=os.filter(o=>day(o.created)===day(Date.now()));const services=h.services||['Restaurant','Service en chambre','À emporter'];
+ return `<div class="col"><div class="card"><h3>🏨 Espace hôtel partenaire</h3><p class="mut">Configurez le service de restauration de votre établissement : restaurant, service en chambre et événements.</p><div class="grid"><div class="card"><b>${active.length}</b><div class="mut">Commandes en cours</div></div><div class="card"><b>${today.length}</b><div class="mut">Commandes aujourd’hui</div></div><div class="card"><b>${services.length}</b><div class="mut">Services activés</div></div></div></div>
+ <div class="card col"><h3>Informations de l’hôtel</h3><label>Nom de l’hôtel<input id="hn" value="${esc(h.name||r.name)}"></label><label>Catégorie<select id="hc"><option ${h.category==='Hôtel'?'selected':''}>Hôtel</option><option ${h.category==='Résidence hôtelière'?'selected':''}>Résidence hôtelière</option><option ${h.category==='Auberge'?'selected':''}>Auberge</option><option ${h.category==='Complexe touristique'?'selected':''}>Complexe touristique</option></select></label><label>Responsable restauration<input id="hm" value="${esc(h.manager||'')}" placeholder="Nom du responsable"></label><label>Nombre de chambres<input id="hr" type="number" min="0" value="${h.rooms||''}" placeholder="Ex. 40"></label></div>
+ <div class="card col"><h3>Services de restauration</h3>${['Restaurant','Service en chambre','Petit-déjeuner','Bar / Café','Banquets et séminaires','À emporter'].map((x,i)=>`<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" class="hotel-service" value="${x}" ${(services.includes(x)?'checked':'')}> ${x}</label>`).join('')}<label>Plage horaire du service<input id="ht" value="${esc(h.hours||'07:00 - 23:00')}" placeholder="07:00 - 23:00"></label><label>Instructions affichées à l’équipe<textarea id="hi" rows="3" placeholder="Ex. appeler la réception avant livraison en chambre">${esc(h.instructions||'')}</textarea></label><button onclick="saveHotel()">💾 Enregistrer les paramètres hôtel</button></div>
+ <div class="card"><h3>Commandes de l’hôtel</h3><p class="mut">Les commandes reçues dans RestoGest restent centralisées dans l’onglet Commandes. Les commandes de service en chambre sont identifiées par le numéro de chambre et le type de service.</p><button onclick="tab='orders';render()">Voir les commandes</button></div></div>`},
+ dash(r){const S=r.sales,c=r.currency,td=day(Date.now()),sum=a=>a.reduce((x,s)=>x+s.total,0);
  const days=[...Array(7)].map((_,i)=>{const t=Date.now()-(6-i)*864e5;return{l:day(t).slice(5),v:sum(S.filter(s=>day(s.date)==day(t)))}});
  const it={};S.forEach(s=>s.items.forEach(i=>it[i.n]=(it[i.n]||0)+i.p*i.q));
  const top=Object.entries(it).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([l,v])=>({l:l.slice(0,8),v}));
@@ -355,7 +362,7 @@ hist(r){return `<div class="card" style="overflow:auto"><table><tr><th>N°</th><
 orders(r){const d=D.get(),os=d.orders.filter(o=>o.restId==r.id).reverse(),drv=d.users.filter(u=>u.restId==r.id&&u.role=='driver');
  return os.map(o=>`<div class="card"><div class="row"><b>#${o.id}</b> <span class="badge" data-s="${o.status}">${o.status}</span> <span class="mut">${fdate(o.created)} — ${esc(o.clientName)} ${esc(o.clientPhone)}</span></div>
  <div>${o.items.map(i=>`${esc(i.n)} ×${i.q}`).join(', ')} — <b>${money(o.total,r.currency)}</b> (${esc(o.pay)})</div>${o.deliveryFee?`<div class="mut">🛵 Livraison incluse : ${money(o.deliveryFee,r.currency)} (${o.distKm} km × ${money(o.kmPrice,r.currency)}/km)</div>`:''}
- <div class="mut">${esc(o.addr)}</div>
+ <div class="mut">${o.serviceType?`<div><b>🏨 ${esc(o.serviceType)}</b>${o.roomNumber?` · Chambre ${esc(o.roomNumber)}`:''}</div>`:''}${esc(o.addr)}</div>
  ${o.cLat!=null&&o.cLng!=null?`<div class="row"><span class="mut">📍 GPS client : ${o.cLat.toFixed(5)}, ${o.cLng.toFixed(5)}</span> <a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${o.cLat},${o.cLng}" style="font-weight:700">Ouvrir dans Google Maps</a></div>`:'<div class="mut">Position GPS non fournie</div>'}
  ${o.status=='annulée'?'<p style="color:var(--bad)">Annulée par le client</p>':''}
  <div class="row">${o.status=='en attente'?`<button onclick="so('${o.id}','acceptée')">Accepter</button><button class="bad" onclick="so('${o.id}','refusée')">Refuser</button>`:''}
@@ -390,6 +397,7 @@ settingsMain(r){return `<div class="card col"><label>Nom<input id="sn" value="${
  <label>Devise<select id="sc">${curOptions(r.currency)}</select></label>
  <button onclick="saveS()">Enregistrer</button></div>
  <div class="card"><b>Carte de visite</b><p><a href="${cardUrl(r.slug)}" target="_blank">Ouvrir la carte de visite de ${esc(r.name)}</a></p><div style="text-align:center">${RGQR.svg(new URL('index.html?resto='+r.slug,location.href).href,150)}<p class="mut">📱 QR code : vos clients arrivent directement sur votre restaurant.</p></div></div>`}};
+function saveHotel(){const services=[...document.querySelectorAll('.hotel-service:checked')].map(x=>x.value);upd(r=>{r.hotel={...(r.hotel||{}),enabled:true,name:hn.value.trim(),category:hc.value,manager:hm.value.trim(),rooms:Math.max(0,+hr.value||0),services,hours:ht.value.trim(),instructions:hi.value.trim()};r.businessType='hotel'});alert('Paramètres hôtel enregistrés.');render()}
 function addC(i){const p=R().menu[i],x=cart.find(c=>c.n==p.n);x?x.q++:cart.push({n:p.n,p:p.p,q:1});render()}
 function sell(){const r=R(),s={id:uid(),date:Date.now(),items:cart,total:cart.reduce((a,i)=>a+i.p*i.q,0),pay:pm.value,src:'caisse'};
  upd(r=>r.sales.push(s));cart=[];printHTML(receipt(r,s));render()}

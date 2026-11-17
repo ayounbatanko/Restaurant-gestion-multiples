@@ -1,6 +1,6 @@
 {
-  "version": "1.8.6",
-  "message": "",
-  "notify": false,
-  "updatedAt": "2026-11-12T00:00:00Z"
+  "version": "1.9.0",
+  "message": "Nouveau module Hôtel : gestion des services et commandes en chambre.",
+  "notify": true,
+  "updatedAt": "2026-11-17T15:30:00Z"
 }
