@@ -209,7 +209,7 @@ function subInfo(r){const n=Date.now(),dl=e=>Math.max(0,Math.ceil((e-n)/864e5));
 function notify(t,b){toast(t+(b?' — '+b:''));try{if(window.Notification&&Notification.permission=='granted')new Notification(t,{body:b||''})}catch(e){}}
 document.addEventListener('click',()=>{try{window.Notification&&Notification.permission=='default'&&Notification.requestPermission()}catch(e){}},{once:true});
 </script><script>
-const U=guard('client');let tab='restos',cur=null,cart={},pos=null,seen=null,seenSig='',menuQ='';
+const U=guard('client');let tab='restos',cur=null,cart={},pos=null,seen=null,seenSig='',menuQ='',hotelDeliveryMode='room';
 // Demander la localisation dès l'arrivée
 if(navigator.geolocation){
   navigator.geolocation.getCurrentPosition(
@@ -228,11 +228,11 @@ function list(){let rs=D.get().rests.filter(r=>subInfo(r).ok);
   :'<p class="mut">Activez la localisation pour voir les restaurants les plus proches et pour commander.</p><button class="sec" onclick="capturePos(()=>render())">📍 Activer ma localisation</button>';
  return head+rs.map(({r,d})=>`<div class="card"><div class="row">${r.logo?`<img class="logo" src="${r.logo}">`:'<div class="logo"></div>'}<div class="g"><b>${esc(r.name)}</b><div class="mut">${esc(r.address||'')}${dist(d)}${!r.lat?' · position non renseignée':''}</div>${r.lat!=null&&r.lng!=null?`<a class="mut" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.lat},${r.lng}">Voir le restaurant sur Google Maps</a>`:''}</div><button onclick="openRest('${r.id}')">Voir toute la carte</button></div>
  ${r.menu.length?`<div class="gal pv">${r.menu.slice(0,10).map(p=>`<div class="pvi" onclick="openRest('${r.id}')">${p.imgs&&p.imgs[0]?`<img src="${p.imgs[0]}" alt="">`:'<div class="ph2">🍽️</div>'}<b>${esc(p.n)}</b><span>${money(p.p,r.currency)}</span></div>`).join('')}</div>`:'<p class="mut">Catalogue bientôt disponible.</p>'}</div>`).join('')||'<p class="mut">Aucun restaurant disponible pour le moment.</p>'}
-function openRest(id){cur=id;cart={};menuQ='';render()}
-function delivInfo(r,sub){const kp=+r.kmPrice||0,has=pos&&r.lat!=null&&r.lng!=null;const dk=has?km(pos,[r.lat,r.lng]):null;
- const dec=(!r.currency||r.currency=='XOF'||r.currency=='XAF')?0:2,fee=(r.hotel&&r.hotel.enabled)?0:((dk!=null&&kp>0)?+(dk*kp).toFixed(dec):0);
- return {kp,dk,fee,total:sub+fee,ok:!!(r.hotel&&r.hotel.enabled)||dk!=null&&kp>0,hotelFree:!!(r.hotel&&r.hotel.enabled)}}
-function delivHtml(r,sub){const x=delivInfo(r,sub);if(!sub)return '';
+function openRest(id){cur=id;cart={};menuQ='';hotelDeliveryMode='room';render()}
+function delivInfo(r,sub,roomFree=false){const kp=+r.kmPrice||0,has=pos&&r.lat!=null&&r.lng!=null;const dk=has?km(pos,[r.lat,r.lng]):null;
+ const dec=(!r.currency||r.currency=='XOF'||r.currency=='XAF')?0:2,fee=roomFree?0:((dk!=null&&kp>0)?+(dk*kp).toFixed(dec):0);
+ return {kp,dk,fee,total:sub+fee,ok:roomFree||(dk!=null&&kp>0),hotelFree:roomFree}}
+function delivHtml(r,sub,roomFree=false){const x=delivInfo(r,sub,roomFree);if(!sub)return '';
  if(x.hotelFree)return `<div class="mut">🏨 Service hôtelier : <b>sans frais de livraison</b></div><div class="mut">Plats : ${money(sub,r.currency)}</div>`;
  const l=x.ok?`🛵 Livraison : <b>${x.dk.toFixed(2)} km × ${money(x.kp,r.currency)}/km = ${money(x.fee,r.currency)}</b>`:
   !(+r.kmPrice>0)?'🛵 Livraison : tarif au km non défini par le restaurant (à convenir avec lui)':
@@ -244,19 +244,20 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
  const items=r.menu.filter(p=>cart[p.n]>0).map(p=>({n:p.n,p:p.p,q:cart[p.n]}));
  const tot=items.reduce((a,i)=>a+i.p*i.q,0);
  const nItems=items.reduce((a,i)=>a+i.q,0);
- const gpsClass=pos?'gps-ok':'gps-need';
+ const hotelAccount=!!(r.hotel&&r.hotel.enabled),roomFree=hotelAccount&&hotelDeliveryMode==='room';
+ const gpsClass=pos|| (hotelAccount&&roomFree)?'gps-ok':'gps-need';
  const gpsText=pos
   ? `✅ Position GPS enregistrée : ${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`
-  : (r.hotel&&r.hotel.enabled?'🏨 Commande dans l’hôtel : la localisation GPS n’est pas nécessaire.':'⚠️ Activez votre localisation GPS avant de commander (obligatoire pour la livraison).');
+  : (hotelAccount&&roomFree?'🏨 Service en chambre : la localisation GPS n’est pas nécessaire.':'⚠️ Activez votre localisation GPS avant de commander (obligatoire pour la livraison extérieure).');
  return `<button class="sec" onclick="cur=null;menuQ='';render()">← Retour</button>
  <h2>${esc(r.name)}</h2>
  <input class="menu-search" id="menuSearch" type="search" placeholder="🔍 Rechercher un plat par nom…" value="${esc(menuQ)}" oninput="menuQ=this.value;renderMenuOnly()">
  <div id="menuList">${renderDishes(r,dishes)}</div>
  <div class="card col">
   <b>Votre panier ${nItems?`(${nItems} article${nItems>1?'s':''})`:''}</b>
-  ${items.length?`<div>${items.map(i=>`${esc(i.n)} ×${i.q} — ${money(i.p*i.q,r.currency)}`).join('<br>')}</div>${delivHtml(r,tot)}<div class="kpi" style="font-size:22px">Total : ${money(delivInfo(r,tot).total,r.currency)}</div>`:'<p class="mut">Ajoutez plusieurs plats avec les boutons + / −.</p>'}
-  ${r.hotel&&r.hotel.enabled?`<label>🏨 Type de service<select id="serviceType">${(r.hotel.services||['Restaurant','Service en chambre']).map(x=>`<option>${esc(x)}</option>`).join('')}</select></label><input id="roomNumber" placeholder="Numéro de chambre (si service en chambre)"><p class="mut">${esc(r.hotel.instructions||'Indiquez votre chambre si vous souhaitez être servi sur place.')}</p>`:''}
-  <input id="ad" placeholder="${r.hotel&&r.hotel.enabled?'Bâtiment / étage / précision (facultatif)':'Adresse / complément (quartier, porte, repère)'}">
+  ${items.length?`<div>${items.map(i=>`${esc(i.n)} ×${i.q} — ${money(i.p*i.q,r.currency)}`).join('<br>')}</div>${delivHtml(r,tot,roomFree)}<div class="kpi" style="font-size:22px">Total : ${money(delivInfo(r,tot,roomFree).total,r.currency)}</div>`:'<p class="mut">Ajoutez plusieurs plats avec les boutons + / −.</p>'}
+  ${hotelAccount?`<label>🏨 Où souhaitez-vous recevoir votre commande ?<select id="hotelDeliveryMode" onchange="hotelDeliveryMode=this.value;render()"><option value="room" ${roomFree?'selected':''}>Dans l’hôtel — service en chambre (sans frais)</option><option value="outside" ${!roomFree?'selected':''}>À l’extérieur de l’hôtel — livraison payante</option></select></label>${roomFree?`<label>Numéro du bâtiment <span style="color:#d33">*</span><input id="buildingNumber" required placeholder="Ex. Bâtiment A" value=""></label><label>Numéro de chambre <span style="color:#d33">*</span><input id="roomNumber" required inputmode="text" autocomplete="off" placeholder="Ex. 204"><p class="mut">Le bâtiment et la chambre sont obligatoires. Aucun frais de livraison ne sera ajouté.</p></label><p class="mut">${esc(r.hotel.instructions||'Indiquez le bâtiment et le numéro de chambre pour recevoir votre commande.')}</p>`:`<p class="mut">Pour une adresse en ville, les frais de livraison habituels du restaurant s’appliquent. Indiquez votre adresse et activez le GPS.</p>`}`:''}
+  <input id="ad" placeholder="${hotelAccount&&!roomFree?'Adresse complète de livraison en ville (quartier, rue, repère)':(hotelAccount?'Précision de localisation (facultatif)':'Adresse / complément (quartier, porte, repère)')}">
   <div class="gps-box ${gpsClass}" id="gpsbox">
    <div id="gpsmsg" class="mut">${gpsText}</div>
    <div class="row" style="margin-top:8px">
@@ -265,8 +266,8 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
    </div>
   </div>
   <select id="py" onchange="document.getElementById('pyInfo').textContent=this.selectedOptions[0].dataset.d||''"><option>Paiement à la livraison</option>${(r.payMethods||r.pay.map(n=>({name:n}))).map(p=>`<option data-d="${esc(p.details||'')}">${esc(p.name)}</option>`).join('')}</select><div id="pyInfo" class="mut"></div>
-  <button onclick="order()" ${tot?'':'disabled'}>Commander ${tot?money(delivInfo(r,tot).total,r.currency):''}</button>
-  <p class="mut">${r.hotel&&r.hotel.enabled?'Aucun frais de livraison ne sera ajouté pour les commandes de cet hôtel.':'La localisation GPS est obligatoire pour envoyer la commande au restaurant et au livreur.'}</p>
+  <button onclick="order()" ${tot?'':'disabled'}>Commander ${tot?money(delivInfo(r,tot,roomFree).total,r.currency):''}</button>
+  <p class="mut">${hotelAccount?(roomFree?'Service en chambre : livraison gratuite.':'Livraison extérieure : frais calculés selon la distance.'):'La localisation GPS est obligatoire pour envoyer la commande au restaurant et au livreur.'}</p>
  </div>
  ${nItems?`<div class="cart-bar"><span>🛒 <b>${nItems}</b> plat${nItems>1?'s':''} · <b>${money(delivInfo(r,tot).total,r.currency)}</b></span><button onclick="document.getElementById('ad')?.scrollIntoView({behavior:'smooth'})">Voir le panier</button></div>`:''}`}
 function renderDishes(r,dishes){
@@ -306,17 +307,22 @@ function order(){
  const items=(r?.menu||[]).filter(p=>cart[p.n]>0).map(p=>({n:p.n,p:p.p,q:cart[p.n]}));
  if(!items.length)return alert('Ajoutez au moins un plat dans votre panier.');
  // La géolocalisation reste obligatoire pour une livraison classique, mais pas pour un service hôtelier.
- const hotelOrder=!!(r&&r.hotel&&r.hotel.enabled);
- if(!pos&&!hotelOrder){
+ const hotelOrder=!!(r&&r.hotel&&r.hotel.enabled),roomOrder=hotelOrder&&hotelDeliveryMode==='room';
+ if(!pos&&!roomOrder){
   alert('Vous devez activer votre localisation GPS avant de commander.\nLe restaurant et le livreur recevront vos coordonnées sur Google Maps.');
   return capturePos(()=>order());
  }
- const sub0=items.reduce((a,i)=>a+i.p*i.q,0),dv=delivInfo(r,sub0);
+ const sub0=items.reduce((a,i)=>a+i.p*i.q,0),dv=delivInfo(r,sub0,roomOrder);
+ if(hotelOrder&&!roomOrder&&!(+r.kmPrice>0))return alert('Le restaurant de cet hôtel doit définir un tarif de livraison au kilomètre avant de recevoir des commandes extérieures.');
+ if(hotelOrder&&!roomOrder&& (dv.dk==null||r.lat==null||r.lng==null))return alert('Impossible de calculer les frais de livraison. Vérifiez la position GPS du restaurant et activez votre GPS.');
  const addrEl=document.getElementById('ad');
  const pyEl=document.getElementById('py');
  const serviceEl=document.getElementById('serviceType');
  const roomEl=document.getElementById('roomNumber');
- if(serviceEl&&serviceEl.value.toLowerCase().includes('chambre')&&!(roomEl&&roomEl.value.trim()))return alert('Veuillez indiquer votre numéro de chambre pour le service en chambre.');
+ const roomNumber=roomEl?roomEl.value.trim():'';
+ const buildingEl=document.getElementById('buildingNumber'),buildingNumber=buildingEl?buildingEl.value.trim():'';
+ if(roomOrder&&(!buildingNumber||!roomNumber))return alert('Le numéro du bâtiment et le numéro de chambre sont obligatoires pour une commande dans l’hôtel.');
+ const finalServiceType=hotelOrder?(roomOrder?'Service en chambre':'Livraison extérieure'):(serviceEl?.value||null);
  const d=D.get();
  d.orders.push({
   id:uid(),
@@ -332,9 +338,11 @@ function order(){
   total:sub0+dv.fee,
   status:'en attente',
   pay:pyEl?pyEl.value:'Paiement à la livraison',
-  addr:(addrEl&&addrEl.value.trim())||'Position GPS du client',
-  serviceType:document.getElementById('serviceType')?.value||null,
-  roomNumber:document.getElementById('roomNumber')?.value.trim()||null,
+  addr:(addrEl&&addrEl.value.trim())||(roomOrder?'Dans l’enceinte de l’hôtel':'Position GPS du client'),
+  serviceType:finalServiceType,
+  deliveryMode:hotelOrder?(roomOrder?'room':'outside'): 'outside',
+  buildingNumber:roomOrder?buildingNumber:null,
+  roomNumber:roomOrder?roomNumber:null,
   cLat:pos?pos[0]:null,
   cLng:pos?pos[1]:null,
   locationAccuracy:pos?(window._clientGpsAccuracy||null):null,
@@ -343,7 +351,7 @@ function order(){
  });
  D.save(d);
  cart={};cur=null;tab='myorders';menuQ='';
- notify('Commande envoyée ✓','Le restaurant '+r.name+' a reçu votre position GPS');
+ notify('Commande envoyée ✓',roomOrder?'Le restaurant '+r.name+' a reçu le bâtiment et la chambre.':'Le restaurant '+r.name+' a reçu votre adresse de livraison.');
  render();
 }
 function trk(st){const L=['Commande envoyée','Acceptée par le restaurant','Préparée','Prise en charge par le livreur','Commande en route','Commande arrivée chez vous','Livrée'],I=['📨','✅','👨‍🍳','📦','🛵','📍','🎉'],i=st=='terminée'?7:ST.indexOf(st);return `<div class="trk">${L.map((l,k)=>`<div class="st ${k<i?'done':k==i?'cur':''}"><span>${k<i?'✓':I[k]}</span><b>${l}</b></div>`).join('')}</div>`}

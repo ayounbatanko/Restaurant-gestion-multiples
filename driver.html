@@ -214,7 +214,7 @@ function render(){const d=D.get(),rs=rest();hdr('Espace livreur — '+U.name+(rs
  if(dTab=='chat'){m.innerHTML=driverBar()+RGChat.userView(U);return}
  m.innerHTML=driverBar()+`<h3>Mes livraisons</h3>`+(jobs.map(o=>{const nxt=nextStage[o.status],hasGPS=o.cLat!=null&&o.cLng!=null;
  return `<div class="card"><div class="row"><b>Commande #${esc(o.id)}</b><span class="badge" data-s="${o.status}">${esc(o.status)}</span></div>
- <b>${esc(o.clientName)}</b> · ${esc(o.clientPhone)}<p>Adresse : ${esc(o.addr)}</p>
+ <b>${esc(o.clientName)}</b> · ${esc(o.clientPhone)}<p>${o.deliveryMode==='room'||o.roomNumber?`🏨 <b>Livraison dans l’hôtel</b><br>Bâtiment : <b>${esc(o.buildingNumber||'Non renseigné')}</b><br>Chambre : <b>${esc(o.roomNumber||'Non renseignée')}</b>`:`📦 <b>Livraison extérieure</b><br>Adresse : ${esc(o.addr||'Non renseignée')}`}</p>
  <p>${o.items.map(i=>`${esc(i.n)} ×${i.q}`).join(', ')}<br><b>${money(o.total,rs?.currency)}</b> (${esc(o.pay)})</p>
  ${hasGPS?`<p class="mut">Position GPS du client enregistrée : ${o.cLat.toFixed(5)}, ${o.cLng.toFixed(5)}</p>`:'<p class="mut">Position GPS précise non disponible : utilisez l’adresse indiquée.</p>'}
  <a href="${mapUrl(o)}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 14px;background:var(--navy2);color:white;text-decoration:none;border-radius:10px;font-weight:700">📍 Ouvrir le trajet dans Google Maps</a>

@@ -206,7 +206,7 @@ try{const q=new URLSearchParams(location.search).get('resto');if(q)store.s('l','
 {const tg=store.g('l','rg_target'),tr=tg&&D.get().rests.find(r=>r.slug==tg);if(tr)document.querySelector('.brand').insertAdjacentHTML('afterend','<div class="card" style="margin:8px 0;border-inline-start:6px solid var(--gold)">🍽️ <b>'+esc(tr.name)+'</b><br><span class="mut">Connectez-vous ou créez un compte client pour voir le menu et commander.</span></div>')}
 const go={owner:'owner.html',restaurant:'restaurant.html',client:'client.html',driver:'driver.html'};
 const hasOwner=()=>true;
-let view='l',kind='c';
+let view='l',kind='c',accountType='restaurant';
 const cls=on=>on?'':'sec';
 function draw(){msg.textContent='';
  tabs.innerHTML=`<button class="${cls(view=='l')}" onclick="view='l';draw()">Se connecter</button><button class="${cls(view=='s')}" onclick="view='s';draw()">Créer un compte</button>`;
@@ -214,7 +214,8 @@ function draw(){msg.textContent='';
  if(view=='l')f.innerHTML=`<input id="tel" placeholder="Numéro de téléphone ou nom d'utilisateur" autocomplete="username"><input id="pwd" type="password" placeholder="Mot de passe" autocomplete="current-password"><button onclick="login()">Se connecter</button><button type="button" class="sec" onclick="view='recover';draw()">Mot de passe oublié ?</button>`;
  else if(view=='recover')f.innerHTML=`<p class="mut">Réinitialisez votre mot de passe avec votre réponse secrète.</p><input id="rid" placeholder="Téléphone ou nom d'utilisateur"><label>Quelle est votre nom ?</label><input id="ranswer" placeholder="Votre réponse de sécurité"><input id="rpwd" type="password" placeholder="Nouveau mot de passe"><input id="rpwd2" type="password" placeholder="Confirmer le nouveau mot de passe"><button onclick="recoverPassword()">Réinitialiser le mot de passe</button><button class="sec" onclick="view='l';draw()">Retour à la connexion</button>`;
  else if(view=='o')f.innerHTML=`<p class="mut">La création publique d'un compte propriétaire est désactivée.</p><button class="sec" onclick="view='l';draw()">Retour</button>`;
- else f.innerHTML=`<div class="row"><button class="${cls(kind=='c')}" onclick="kind='c';restPos=null;draw()">Client</button><button class="${cls(kind=='r')}" onclick="kind='r';restPos=null;draw()">Créer un compte pour votre restaurant</button></div>
+ else f.innerHTML=`<div class="row"><button class="${cls(kind=='c')}" onclick="kind='c';restPos=null;draw()">Client</button><button class="${cls(kind=='r')}" onclick="kind='r';restPos=null;draw()">Compte professionnel</button></div>
+  ${kind=='r'?`<div class="card col"><b>Quel type de compte souhaitez-vous créer ?</b><label><input type="radio" name="accountType" value="restaurant" ${accountType=='restaurant'?'checked':''} onchange="accountType=this.value;draw()"> Compte pour gérer votre restaurant</label><label><input type="radio" name="accountType" value="hotel" ${accountType=='hotel'?'checked':''} onchange="accountType=this.value;draw()"> Compte pour gérer les activités de restauration de votre hôtel</label></div>`:''}
   <input id="nm" placeholder="${kind=='r'?'Nom du restaurant':'Votre nom'}"><input id="tel" placeholder="Numéro de téléphone"><label>Question de sécurité : Quelle est votre nom ?</label><input id="securityAnswer" placeholder="Votre réponse secrète" autocomplete="off">${pw}
   ${kind=='r'?`<select id="cur">${curOptions('XOF')}</select>
   <div class="mut">Devise par défaut : FCFA (XOF). 1 mois d'essai gratuit.</div>
@@ -278,6 +279,7 @@ async function signup(){const d=D.get(),ph=tel.value.trim(),pw=pwd.value;
  if(kind=='r'){let s=slugify(u.name)||'resto',b=s,i=2;while(d.rests.some(r=>r.slug==s))s=b+'-'+i++;
   const r={id:uid(),slug:s,name:u.name,phone:ph,address:'',logo:'',currency:cur.value,lang:lang(),
    lat:restPos.lat,lng:restPos.lng,locationAccuracy:restPos.acc||null,locationCapturedAt:Date.now(),
+   businessType:accountType,hotel:accountType==='hotel'?{enabled:true,name:u.name,category:'Hôtel',manager:'',rooms:0,services:['Restaurant','Service en chambre','Petit-déjeuner','Bar / Café','Banquets et séminaires','À emporter'],hours:'07:00 - 23:00',instructions:''}:undefined,
    sub:'trial',trialEnd:Date.now()+30*864e5,subEnd:0,pay:[],menu:[],sales:[]};d.rests.push(r);u.restId=r.id}
  d.users.push(u);D.save(d);store.s('s','uid',u.id);navTo(go[u.role])}
 if(me())navTo(isOwnerAccount(me())?'owner.html':go[me().role]);else draw();
