@@ -1,6 +1,6 @@
 {
-  "version": "1.9.3",
-  "message": "Comptes restaurant ou hôtel ; livraison gratuite en chambre et frais normaux pour les commandes extérieures.",
+  "version": "1.9.4",
+  "message": "Confirmation des opérations de paramètres avec bouton retour ; annulation client bloquée dès que la commande est en route.",
   "notify": true,
-  "updatedAt": "2026-11-17T17:45:00Z"
+  "updatedAt": "2026-11-17T18:00:00Z"
 }
