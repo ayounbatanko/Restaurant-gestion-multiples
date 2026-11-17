@@ -230,9 +230,10 @@ function list(){let rs=D.get().rests.filter(r=>subInfo(r).ok);
  ${r.menu.length?`<div class="gal pv">${r.menu.slice(0,10).map(p=>`<div class="pvi" onclick="openRest('${r.id}')">${p.imgs&&p.imgs[0]?`<img src="${p.imgs[0]}" alt="">`:'<div class="ph2">🍽️</div>'}<b>${esc(p.n)}</b><span>${money(p.p,r.currency)}</span></div>`).join('')}</div>`:'<p class="mut">Catalogue bientôt disponible.</p>'}</div>`).join('')||'<p class="mut">Aucun restaurant disponible pour le moment.</p>'}
 function openRest(id){cur=id;cart={};menuQ='';render()}
 function delivInfo(r,sub){const kp=+r.kmPrice||0,has=pos&&r.lat!=null&&r.lng!=null;const dk=has?km(pos,[r.lat,r.lng]):null;
- const dec=(!r.currency||r.currency=='XOF'||r.currency=='XAF')?0:2,fee=(dk!=null&&kp>0)?+(dk*kp).toFixed(dec):0;
- return {kp,dk,fee,total:sub+fee,ok:dk!=null&&kp>0}}
+ const dec=(!r.currency||r.currency=='XOF'||r.currency=='XAF')?0:2,fee=(r.hotel&&r.hotel.enabled)?0:((dk!=null&&kp>0)?+(dk*kp).toFixed(dec):0);
+ return {kp,dk,fee,total:sub+fee,ok:!!(r.hotel&&r.hotel.enabled)||dk!=null&&kp>0,hotelFree:!!(r.hotel&&r.hotel.enabled)}}
 function delivHtml(r,sub){const x=delivInfo(r,sub);if(!sub)return '';
+ if(x.hotelFree)return `<div class="mut">🏨 Service hôtelier : <b>sans frais de livraison</b></div><div class="mut">Plats : ${money(sub,r.currency)}</div>`;
  const l=x.ok?`🛵 Livraison : <b>${x.dk.toFixed(2)} km × ${money(x.kp,r.currency)}/km = ${money(x.fee,r.currency)}</b>`:
   !(+r.kmPrice>0)?'🛵 Livraison : tarif au km non défini par le restaurant (à convenir avec lui)':
   r.lat==null?'🛵 Livraison : position du restaurant inconnue (frais à confirmer par le restaurant)':'🛵 Livraison : activez votre position GPS pour calculer les frais';
@@ -246,7 +247,7 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
  const gpsClass=pos?'gps-ok':'gps-need';
  const gpsText=pos
   ? `✅ Position GPS enregistrée : ${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`
-  : '⚠️ Activez votre localisation GPS avant de commander (obligatoire pour la livraison).';
+  : (r.hotel&&r.hotel.enabled?'🏨 Commande dans l’hôtel : la localisation GPS n’est pas nécessaire.':'⚠️ Activez votre localisation GPS avant de commander (obligatoire pour la livraison).');
  return `<button class="sec" onclick="cur=null;menuQ='';render()">← Retour</button>
  <h2>${esc(r.name)}</h2>
  <input class="menu-search" id="menuSearch" type="search" placeholder="🔍 Rechercher un plat par nom…" value="${esc(menuQ)}" oninput="menuQ=this.value;renderMenuOnly()">
@@ -255,7 +256,7 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
   <b>Votre panier ${nItems?`(${nItems} article${nItems>1?'s':''})`:''}</b>
   ${items.length?`<div>${items.map(i=>`${esc(i.n)} ×${i.q} — ${money(i.p*i.q,r.currency)}`).join('<br>')}</div>${delivHtml(r,tot)}<div class="kpi" style="font-size:22px">Total : ${money(delivInfo(r,tot).total,r.currency)}</div>`:'<p class="mut">Ajoutez plusieurs plats avec les boutons + / −.</p>'}
   ${r.hotel&&r.hotel.enabled?`<label>🏨 Type de service<select id="serviceType">${(r.hotel.services||['Restaurant','Service en chambre']).map(x=>`<option>${esc(x)}</option>`).join('')}</select></label><input id="roomNumber" placeholder="Numéro de chambre (si service en chambre)"><p class="mut">${esc(r.hotel.instructions||'Indiquez votre chambre si vous souhaitez être servi sur place.')}</p>`:''}
-  <input id="ad" placeholder="Adresse / complément (quartier, porte, repère)">
+  <input id="ad" placeholder="${r.hotel&&r.hotel.enabled?'Bâtiment / étage / précision (facultatif)':'Adresse / complément (quartier, porte, repère)'}">
   <div class="gps-box ${gpsClass}" id="gpsbox">
    <div id="gpsmsg" class="mut">${gpsText}</div>
    <div class="row" style="margin-top:8px">
@@ -265,7 +266,7 @@ function menu(){const r=D.get().rests.find(r=>r.id==cur);if(!r){cur=null;return 
   </div>
   <select id="py" onchange="document.getElementById('pyInfo').textContent=this.selectedOptions[0].dataset.d||''"><option>Paiement à la livraison</option>${(r.payMethods||r.pay.map(n=>({name:n}))).map(p=>`<option data-d="${esc(p.details||'')}">${esc(p.name)}</option>`).join('')}</select><div id="pyInfo" class="mut"></div>
   <button onclick="order()" ${tot?'':'disabled'}>Commander ${tot?money(delivInfo(r,tot).total,r.currency):''}</button>
-  <p class="mut">La localisation GPS est obligatoire pour envoyer la commande au restaurant et au livreur.</p>
+  <p class="mut">${r.hotel&&r.hotel.enabled?'Aucun frais de livraison ne sera ajouté pour les commandes de cet hôtel.':'La localisation GPS est obligatoire pour envoyer la commande au restaurant et au livreur.'}</p>
  </div>
  ${nItems?`<div class="cart-bar"><span>🛒 <b>${nItems}</b> plat${nItems>1?'s':''} · <b>${money(delivInfo(r,tot).total,r.currency)}</b></span><button onclick="document.getElementById('ad')?.scrollIntoView({behavior:'smooth'})">Voir le panier</button></div>`:''}`}
 function renderDishes(r,dishes){
@@ -304,9 +305,10 @@ function order(){
  const r=D.get().rests.find(r=>r.id==cur);
  const items=(r?.menu||[]).filter(p=>cart[p.n]>0).map(p=>({n:p.n,p:p.p,q:cart[p.n]}));
  if(!items.length)return alert('Ajoutez au moins un plat dans votre panier.');
- // Localisation OBLIGATOIRE
- if(!pos){
-  alert('Vous devez activer votre localisation GPS avant de commander.\\nLe restaurant et le livreur recevront vos coordonnées sur Google Maps.');
+ // La géolocalisation reste obligatoire pour une livraison classique, mais pas pour un service hôtelier.
+ const hotelOrder=!!(r&&r.hotel&&r.hotel.enabled);
+ if(!pos&&!hotelOrder){
+  alert('Vous devez activer votre localisation GPS avant de commander.\nLe restaurant et le livreur recevront vos coordonnées sur Google Maps.');
   return capturePos(()=>order());
  }
  const sub0=items.reduce((a,i)=>a+i.p*i.q,0),dv=delivInfo(r,sub0);
@@ -333,10 +335,10 @@ function order(){
   addr:(addrEl&&addrEl.value.trim())||'Position GPS du client',
   serviceType:document.getElementById('serviceType')?.value||null,
   roomNumber:document.getElementById('roomNumber')?.value.trim()||null,
-  cLat:pos[0],
-  cLng:pos[1],
-  locationAccuracy:window._clientGpsAccuracy||null,
-  locationCapturedAt:Date.now(),
+  cLat:pos?pos[0]:null,
+  cLng:pos?pos[1]:null,
+  locationAccuracy:pos?(window._clientGpsAccuracy||null):null,
+  locationCapturedAt:pos?Date.now():null,
   created:Date.now()
  });
  D.save(d);

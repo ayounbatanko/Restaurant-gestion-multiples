@@ -1,6 +1,6 @@
 {
-  "version": "1.9.0",
-  "message": "Nouveau module Hôtel : gestion des services et commandes en chambre.",
+  "version": "1.9.1",
+  "message": "Commandes des hôtels partenaires sans frais de livraison ; GPS facultatif pour le service hôtelier.",
   "notify": true,
-  "updatedAt": "2026-11-17T15:30:00Z"
+  "updatedAt": "2026-11-17T16:00:00Z"
 }
